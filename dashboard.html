@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Binance Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }
+    h1 { margin: 0 0 8px; }
+    .muted { color:#666; font-size:14px; margin-bottom:16px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
+    th { background: #f7f7f7; text-align: left; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .pill { padding: 2px 8px; border-radius: 999px; font-weight: 600; display:inline-block; }
+    .buy { background:#e6ffed; color:#057a37; }
+    .sell { background:#ffecec; color:#a80000; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    input, select, button { font-size:14px; padding:6px 10px; margin-right:8px; }
+  </style>
+</head>
+<body>
+  <h1>Binance Dashboard</h1>
+  <div class="muted">Auto-refresh every <span id="sec">5</span>s • Time: <span id="now"></span></div>
+
+  <div class="muted">
+    <b>Quick Order:</b>
+    <select id="symbol"><option>BTCUSDT</option><option>ETHUSDT</option></select>
+    <select id="side"><option>BUY</option><option>SELL</option></select>
+    <input id="qty" type="number" step="any" placeholder="quantity" />
+    <button onclick="place()">Place MARKET</button>
+    <span id="msg"></span>
+  </div>
+
+  <div class="grid">
+    <section>
+      <h2>Balances</h2>
+      <table id="tbl-bal">
+        <thead><tr><th>Asset</th><th>Free</th><th>Locked</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Recent Orders</h2>
+      <table id="tbl-orders">
+        <thead>
+          <tr><th>Time (UTC)</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Price</th><th>Status</th><th>OrderId</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </div>
+
+<script>
+  const SEC = 5;
+  const API_KEY = ""; // ถ้าตั้ง API_KEY ใน Vercel ให้ใส่ตรงนี้ (หรืออ่านจาก prompt)
+  const BASE = "";    // ใช้โดเมนเดียวกับ vercel app; ปล่อยว่างได้
+
+  function hdrs() {
+    const h = { "Content-Type": "application/json" };
+    if (API_KEY) h["X-API-KEY"] = API_KEY;
+    return h;
+  }
+  function fmt(n, d=8){ if(n===null||n===undefined)return ""; const x=Number(n); return isFinite(x)?x.toLocaleString(undefined,{maximumFractionDigits:d}):String(n); }
+  function stamp(){ document.getElementById("now").textContent = new Date().toISOString().replace('T',' ').replace('Z',' UTC'); }
+
+  async function fetchJSON(url, opt={}) {
+    const r = await fetch(url, opt);
+    const data = await r.json().catch(()=>({error:"bad json"}));
+    if (!r.ok) throw new Error(data.error||"request failed");
+    return data;
+  }
+
+  async function loadBalances() {
+    const tb = document.querySelector("#tbl-bal tbody"); tb.innerHTML = "";
+    try{
+      const data = await fetchJSON(`${BASE}/api/balances`, { headers: hdrs() });
+      for(const b of data){
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${b.asset}</td><td>${fmt(b.free)}</td><td>${fmt(b.locked)}</td>`;
+        tb.appendChild(tr);
+      }
+    }catch(e){
+      tb.innerHTML = `<tr><td colspan="3">Error: ${e.message}</td></tr>`;
+    }
+  }
+
+  async function loadOrders() {
+    const tb = document.querySelector("#tbl-orders tbody"); tb.innerHTML = "";
+    try{
+      const data = await fetchJSON(`${BASE}/api/orders`, { headers: hdrs() });
+      for(const o of data){
+        const side = (o.side||"").toUpperCase();
+        const pill = `<span class="pill ${side==="BUY"?"buy":"sell"}">${side}</span>`;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td>${(o.ts||"").replace('T',' ').replace('Z','')}</td>
+          <td>${o.symbol}</td><td>${pill}</td><td>${fmt(o.qty,10)}</td>
+          <td>${fmt(o.price,10)}</td><td>${o.status||""}</td><td>${o.order_id||""}</td>`;
+        tb.appendChild(tr);
+      }
+    }catch(e){
+      tb.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
+    }
+  }
+
+  async function place(){
+    const msg = document.getElementById("msg");
+    msg.textContent = "…";
+    try{
+      const payload = {
+        symbol: document.getElementById("symbol").value,
+        side: document.getElementById("side").value,
+        quantity: document.getElementById("qty").value
+      };
+      await fetchJSON(`${BASE}/api/orders`, {
+        method:"POST",
+        headers: hdrs(),
+        body: JSON.stringify(payload)
+      });
+      msg.textContent = "OK";
+      await loadOrders(); await loadBalances();
+    }catch(e){
+      msg.textContent = "Error: " + e.message;
+    }
+  }
+
+  async function tick(){ stamp(); await Promise.all([loadBalances(), loadOrders()]); }
+  (async ()=>{ await tick(); setInterval(tick, SEC*1000); })();
+</script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "name": "binance-serverless",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "binance": "3.0.1"
+  }
+}
