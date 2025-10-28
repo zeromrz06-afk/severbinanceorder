@@ -65,17 +65,35 @@
   function fmt(n, d=8){ if(n===null||n===undefined)return ""; const x=Number(n); return isFinite(x)?x.toLocaleString(undefined,{maximumFractionDigits:d}):String(n); }
   function stamp(){ document.getElementById("now").textContent = new Date().toISOString().replace('T',' ').replace('Z',' UTC'); }
 
+  function formatError(e) {
+    if (typeof e === 'string') return e;
+    if (e && e.message) return String(e.message);
+    if (e && typeof e === 'object') {
+      try {
+        return JSON.stringify(e);
+      } catch {
+        return String(e);
+      }
+    }
+    return String(e);
+  }
+
   async function fetchJSON(url, opt={}) {
     const r = await fetch(url, opt);
     const text = await r.text();
+    console.log("Response from", url, "status:", r.status, "text:", text.substring(0, 200));
     let data;
     try {
       data = JSON.parse(text);
     } catch (e) {
       console.error("JSON parse error:", text);
-      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
+      throw new Error(`Invalid JSON: ${text.substring(0, 100)}`);
     }
-    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}: ${r.statusText}`);
+    if (!r.ok) {
+      const errMsg = data.error || data.message || `HTTP ${r.status}`;
+      console.error("API Error:", errMsg, "Full data:", data);
+      throw new Error(errMsg);
+    }
     return data;
   }
 
@@ -83,13 +101,18 @@
     const tb = document.querySelector("#tbl-bal tbody"); tb.innerHTML = "";
     try{
       const data = await fetchJSON(`${BASE}/api/balances`, { headers: hdrs() });
+      if (!Array.isArray(data) || data.length === 0) {
+        tb.innerHTML = `<tr><td colspan="3">No balances found</td></tr>`;
+        return;
+      }
       for(const b of data){
         const tr = document.createElement("tr");
         tr.innerHTML = `<td>${b.asset}</td><td>${fmt(b.free)}</td><td>${fmt(b.locked)}</td>`;
         tb.appendChild(tr);
       }
     }catch(e){
-      tb.innerHTML = `<tr><td colspan="3">Error: ${e.message}</td></tr>`;
+      console.error("loadBalances error:", e);
+      tb.innerHTML = `<tr><td colspan="3">Error: ${formatError(e)}</td></tr>`;
     }
   }
 
@@ -97,6 +120,10 @@
     const tb = document.querySelector("#tbl-orders tbody"); tb.innerHTML = "";
     try{
       const data = await fetchJSON(`${BASE}/api/orders`, { headers: hdrs() });
+      if (!Array.isArray(data) || data.length === 0) {
+        tb.innerHTML = `<tr><td colspan="7">No orders found</td></tr>`;
+        return;
+      }
       for(const o of data){
         const side = (o.side||"").toUpperCase();
         const pill = `<span class="pill ${side==="BUY"?"buy":"sell"}">${side}</span>`;
@@ -107,7 +134,8 @@
         tb.appendChild(tr);
       }
     }catch(e){
-      tb.innerHTML = `<tr><td colspan="7">Error: ${e.message}</td></tr>`;
+      console.error("loadOrders error:", e);
+      tb.innerHTML = `<tr><td colspan="7">Error: ${formatError(e)}</td></tr>`;
     }
   }
 
@@ -128,7 +156,8 @@
       msg.textContent = "OK";
       await loadOrders(); await loadBalances();
     }catch(e){
-      msg.textContent = "Error: " + e.message;
+      console.error("place error:", e);
+      msg.textContent = "Error: " + formatError(e);
     }
   }
 
