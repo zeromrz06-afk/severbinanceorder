@@ -1,5 +1,4 @@
-const Binance = require("binance");
-const Spot = Binance.Spot;
+const { Spot } = require("@binance/connector");
 
 const USE_TESTNET = true;
 const baseURL = USE_TESTNET ? "https://testnet.binance.vision" : undefined;

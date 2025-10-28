@@ -6,6 +6,6 @@
     "node": "20.x"
   },
   "dependencies": {
-    "binance": "^2.5.0"
+    "@binance/connector": "^3.2.2"
   }
 }
