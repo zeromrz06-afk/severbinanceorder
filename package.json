@@ -1,4 +1,5 @@
 {
+  "engines": { "node": ">=18" },
   "name": "binance-serverless",
   "private": true,
   "type": "module",
