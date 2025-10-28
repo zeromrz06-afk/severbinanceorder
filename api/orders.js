@@ -1,12 +1,6 @@
-import { getClient, okCors, requireKey, ALLOWED, normalizeErr } from "./_client.js";
+const { getClient, okCors, requireKey, ALLOWED, normalizeErr } = require("./_client.js");
 
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     okCors(res);
     if (req.method === "OPTIONS") return res.status(200).end();
@@ -66,4 +60,4 @@ export default async function handler(req, res) {
     console.error("Orders handler error:", e);
     return res.status(500).json({ error: normalizeErr(e) });
   }
-}
+};
