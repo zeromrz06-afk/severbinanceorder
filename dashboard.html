@@ -67,8 +67,15 @@
 
   async function fetchJSON(url, opt={}) {
     const r = await fetch(url, opt);
-    const data = await r.json().catch(()=>({error:"bad json"}));
-    if (!r.ok) throw new Error(data.error||"request failed");
+    const text = await r.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      console.error("JSON parse error:", text);
+      throw new Error(`Invalid JSON response: ${text.substring(0, 100)}`);
+    }
+    if (!r.ok) throw new Error(data.error || `HTTP ${r.status}: ${r.statusText}`);
     return data;
   }
 
