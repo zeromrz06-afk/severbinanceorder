@@ -9,6 +9,9 @@ export default async function handler(req, res) {
 
   if (req.method === "POST") {
     try {
+      let body = req.body || {};
+      if (typeof body === "string") body = JSON.parse(body || "{}");
+      const { symbol, side, quantity } = body;
       const { symbol, side, quantity } = req.body || {};
       const sym = String(symbol || "").toUpperCase();
       const sd  = String(side || "").toUpperCase();
