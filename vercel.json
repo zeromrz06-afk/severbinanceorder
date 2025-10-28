@@ -1,11 +1,12 @@
 {
   "functions": {
     "api/**/*.js": {
-      "runtime": "nodejs20.x",
-      "regions": ["sin1", "hkg1", "fra1"]
+      "runtime": "nodejs20.x"
     }
   },
+  "regions": ["sin1", "hkg1", "fra1"],
   "routes": [
+    { "src": "^/$", "dest": "/dashboard.html" },
     { "src": "^/dashboard$", "dest": "/dashboard.html" },
     { "src": "^/api/(.*)$", "dest": "/api/$1" }
   ]
